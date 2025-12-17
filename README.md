@@ -1,71 +1,154 @@
-# MARS Medical Summarization
+# Automated Discharge Summary Generation
 
-**MARS Datathon 2025 – Medical Note Summarization & ICD-10 Code Prediction**  
-This repository implements our competition pipeline, combining **LLM prompting with rule-based postprocessing** to achieve clinical accuracy, fairness, and format alignment in medical summarization tasks.
+Deterministic Rule-Based Clinical Text Structuring Pipeline
 
----
+# Competition Information
 
-## Project Overview
+M.A.R.S. 2025 Discharge Summary Generation Datathon
+(Medical Auto-documentation with Real-world Structuring)
 
-### Task A. Brief Hospital Course Summarization
-- **Input**: inpatient medical record (discharge summary)
-- **Output**: 12–20 sentence narrative summary  
-  *(structured: presentation → diagnostics/treatment → response → complications → disposition)*  
-- **Strategy**: length-controlled prompting + cleanup of list/numbered outputs
+Organizer:
+Medical AI Center · Big Data Center,
+Seoul National University Bundang Hospital (SNUBH)
 
-### Task B. Radiology Impression Generation
-- **Input**: Radiology Findings
-- **Output**: `IMPRESSION:` header + 3–6 concise bullets
-- **Strategy**: RSNA guidelines, explicit presence/absence phrasing, removal of management recommendations (`recommend`, `follow-up`, `consider`, etc.)
+Competition Period:
+September 16, 2025 – October 17, 2025
 
-### Task C. ICD-10 Code Prediction
-- **Input**: Discharge hospital course
-- **Output**: up to 2 ICD-10 codes (uppercase, dot removed, deduplicated)  
-- **Strategy**: regex extraction + ranking rules (non-R/Z preferred, specificity prioritized, overcoding suppressed)
+Task:
+Automated generation of structured discharge summaries from real-world EMR-style data,
+following a fixed guideline and strict data usage constraints.
 
----
+Result:
+6th Place in the Final Round
 
-## Key Features
+This project reflects the full workflow and methodology used throughout both the preliminary and final rounds of the competition.
+The public repository is provided in a compliance-aware, non-identifiable form, independent of ranking outcomes.
 
-- **Format Alignment**
-  - A: match gold summary distribution (median ≈ 20 sentences)  
-  - B: enforce `IMPRESSION:` + 3–6 bullets  
-  - C: ≤2 codes per sample, matches dataset mean (1.58)
+## Overview
 
-- **Rule-based Postprocessing**
-  - Remove recommendation phrases → improves Conciseness & Clinical Clarity  
-  - ICD normalization: uppercase, no dots, deduplication  
+This repository documents a deterministic, rule-based system for automatically generating discharge summaries from inpatient clinical records.
+The system operates strictly within the admission-to-discharge time window and produces summaries that follow a predefined, fixed template.
 
-- **Fairness Guard**
-  - Prepend `Gender` and `Age` metadata line to inputs  
-  - Reduces subgroup performance disparity (80% rule monitoring)  
+This project was developed in the context of a medical AI datathon and is presented here as a **public portfolio version**.
+No real patient data, clinical text, diagnoses, laboratory values, dates, or hospital-specific information are included in this repository.
+All examples are **synthetic and reconstructed for illustrative purposes only**.
 
 ---
 
-## Code Structure
+## Task Definition
 
-```
+* Input: Multiple EMR-style tables
+  (admission, diagnosis, surgery/anesthesia, nursing notes, medical notes, chief complaint)
+* Output: One discharge summary per case, generated automatically by code
+* Execution: Final code executed by the organizers in a closed environment
+* Evaluation dimensions:
 
-├── submit.py           # Best submission (39.57) – Exaone + postprocessing
-├── submit4.py          # Long-summary + header/bullet alignment
-├── submit5.py          # Concise baseline-style version
-├── processor.py        # Base Processor class (competition provided)
-├── figures/            # Data distribution analysis & visualization
-│   ├── A_input_sentence_hist.png
-│   ├── B_bullet_hist.png
-│   ├── C_codes_per_sample_hist.png
-│   └── ...
-└── README.md
-
-```
+  * Guideline compliance
+  * Factual consistency
+  * Internal coherence
+  * Clinical usefulness
+  * Clarity and conciseness
+  * Runtime efficiency
 
 ---
 
-## Results
+## Output Format
 
-- **Leaderboard Best Score**: `39.57 / 60`  
-  - Strong quantitative stability  
-  - Improved LLM-based Conciseness & Clinical Clarity  
-  - ICD-10 accuracy remains the main improvement area  
+Each generated discharge summary strictly contains the following five slots, in the fixed order:
+
+1. Reason for Admission and Medical History
+2. Hospital Course
+3. Discharge Outcome
+4. Key Test Results
+5. Patient Summary
+
+If a slot cannot be populated, a predefined placeholder text is automatically inserted to preserve format compliance.
 
 ---
+
+## System Architecture
+
+### Three-Stage Deterministic Pipeline
+
+### Stage A: Fact Extraction and Normalization
+
+* Unified time filtering across all tables
+  (admission date ≤ record time ≤ discharge date)
+* Slot-specific source mapping:
+
+  * Chief complaint → admission reason
+  * Diagnosis table → diagnosis summary
+  * Surgery/anesthesia table → procedure information
+  * Nursing and medical notes → hospital course and test cues
+* Keyword- and regular-expression–based extraction
+* Test results categorized into:
+
+  * Laboratory
+  * Imaging
+  * Functional
+  * Pathology
+* Duplicate test items reduced to the most recent one or two entries
+
+---
+
+### Stage B: Text Construction (Optional)
+
+* Default configuration: LLM disabled
+* Sentence generation performed using deterministic rules
+* Optional hooks preserved for future local LLM integration
+
+This ensures offline execution, no randomness, and full reproducibility.
+
+---
+
+### Stage C: Guardrails and Export
+
+* Fixed five-slot template enforcement
+* Automatic insertion of missing-slot placeholders
+* Explicit exclusion of future-plan expressions
+* Global length constraints for readability
+* Automatic export of:
+
+  * result.csv
+  * runtime.txt
+
+---
+
+## Label Normalization and MeSH Integration
+
+To reduce ambiguity and redundancy caused by synonym usage:
+
+* Multiple aliases are mapped to canonical labels
+* Public examples use placeholder labels only
+* If MeSH resources are available, synonym coverage is expanded
+* If not, the system automatically falls back to an internal dictionary
+
+The execution logic remains identical regardless of resource availability.
+
+---
+
+## Compliance and Ethics
+
+* No real patient data is included
+* No actual diagnoses, laboratory names, values, or dates are disclosed
+* All figures and tables are synthetic
+* Patient-level references are replaced with “case examples”
+* Hospital names and internal schemas are omitted
+
+This repository is intended solely to document **system design and methodological approach**.
+
+---
+
+## Reproducibility
+
+* No stochastic components
+* Identical input produces identical output
+* No external API usage
+* Fully executable in an offline environment
+
+Key functions:
+
+* run_submit
+* run_submit_batch
+* format_with_template_5
+* within_stay
